@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Find the shortest path through an airport network and compare route-finding algorithms.">
+    <title>{% if lab %}Algorithm Lab{% else %}Route Explorer{% endif %} | Airway Atlas</title>
+    <link id="airport-picker-styles" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.css">
+    {% include "routes/styles.html" %}
+    <script defer src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
+</head>
+<body>
+    <header class="topbar">
+        <div class="shell topbar-inner">
+            <a class="brand" href="{% url 'home' %}">
+                <span class="brand-mark" aria-hidden="true">✈</span>
+                Airway Atlas
+            </a>
+            <nav aria-label="Main navigation">
+                <a href="{% url 'home' %}"{% if not lab %} aria-current="page"{% endif %}>Explorer</a>
+                <a href="{% url 'offline' %}"{% if lab %} aria-current="page"{% endif %}>Algorithm Lab</a>
+                <a href="{% url 'flight-offers' %}">Flight offers</a>
+                <button class="theme" id="theme-toggle" type="button" hidden>Dark mode</button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="shell">
+        <section class="intro" aria-labelledby="page-title">
+            <h1 id="page-title">{% if lab %}Algorithm Lab{% else %}Route explorer{% endif %}</h1>
+            <p>{% if lab %}Run an experimental Q-learning search alongside A* and Dijkstra on the same airport network.{% else %}Find the shortest path between two airports and see how A* and Dijkstra solve the same route.{% endif %}</p>
+        </section>
+
+        <section class="search-panel" aria-label="Airport route search">
+            {% if network_available %}
+            <form method="post" id="route-form">
+                {% csrf_token %}
+                <div class="fields">
+                    <div class="field">
+                        {{ form.source_airport.label_tag }}
+                        {{ form.source_airport }}
+                        {% for error in form.source_airport.errors %}<p class="field-error" id="{{ form.source_airport.auto_id }}_error" role="alert">{{ error }}</p>{% endfor %}
+                    </div>
+                    <button class="swap" type="button" id="swap-airports" aria-label="Swap departure and arrival" title="Swap departure and arrival" hidden>⇄</button>
+                    <div class="field">
+                        {{ form.destination_airport.label_tag }}
+                        {{ form.destination_airport }}
+                        {% for error in form.destination_airport.errors %}<p class="field-error" id="{{ form.destination_airport.auto_id }}_error" role="alert">{{ error }}</p>{% endfor %}
+                    </div>
+                    <button type="submit" class="submit">Find route <span aria-hidden="true">↗</span></button>
+                </div>
+            </form>
+            {% else %}
+            <p class="field-error" role="alert">The airport network is unavailable. Check that the airport and route CSV files are present.</p>
+            {% endif %}
+            {% if search_error %}<p class="field-error search-error" role="alert">{{ search_error }}</p>{% endif %}
+        </section>
+
+        {% if results %}
+            <section class="results" aria-labelledby="results-title">
+                <div class="results-heading">
+                    <div>
+                        <h2 id="results-title">{{ source }} <span aria-hidden="true">→</span> <span class="sr-only">to</span> {{ destination }}</h2>
+                        <p>{% if stops %}{{ stops }} intermediate stop{{ stops|pluralize }}{% else %}Direct connection{% endif %}</p>
+                    </div>
+                    <div class="offer-actions">
+                        <a class="map-link" href="{{ map_url }}">Open map</a>
+                        <a class="submit offer-link" href="{% url 'flight-offers' %}?source={{ source }}&amp;destination={{ destination }}">Find flight offers</a>
+                    </div>
+                </div>
+                <iframe class="route-map" title="Route map from {{ source }} to {{ destination }}" src="{{ map_url }}"></iframe>
+                <div class="comparison">
+                    {% for result in results %}
+                    <article class="algorithm">
+                        <h3>{{ result.label }}</h3>
+                        {% if result.route %}
+                            <p class="distance">{{ result.route.distance|floatformat:"1g" }} <span>km</span></p>
+                            <p class="path">{{ result.route.path|join:" → " }}</p>
+                        {% else %}
+                            <p class="no-path">No route found within the training budget.</p>
+                        {% endif %}
+                        <p class="runtime">{{ result.elapsed_ms|floatformat:3 }} ms</p>
+                    </article>
+                    {% endfor %}
+                </div>
+                <p class="method-note">Timings are from this search. Distances use the great-circle distance of each leg.</p>
+            </section>
+        {% endif %}
+        <p class="dataset-note">The picker lists airports with at least one connection in the bundled dataset. Try ABE to ATL for a direct route.</p>
+    </main>
+
+    <footer class="footer">
+        <div class="shell footer-inner">
+            <span>Airway Atlas</span>
+            <a href="https://github.com/Harsimran-Dalal">Harsimran Singh Dalal on GitHub <span aria-hidden="true">↗</span></a>
+        </div>
+    </footer>
+    {% include "routes/scripts.html" %}
+</body>
+</html>

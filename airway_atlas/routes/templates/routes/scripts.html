@@ -1,0 +1,42 @@
+<script>
+    const themeButton = document.getElementById("theme-toggle");
+    const systemTheme = window.matchMedia("(prefers-color-scheme: dark)");
+    function currentTheme() {
+        return document.documentElement.dataset.theme || (systemTheme.matches ? "dark" : "light");
+    }
+    function updateThemeButton() {
+        themeButton.textContent = currentTheme() === "dark" ? "Light mode" : "Dark mode";
+    }
+    themeButton.hidden = false;
+    updateThemeButton();
+    systemTheme.addEventListener("change", updateThemeButton);
+    themeButton.addEventListener("click", () => {
+        const theme = currentTheme() === "dark" ? "light" : "dark";
+        document.documentElement.dataset.theme = theme;
+        try { localStorage.setItem("airway-atlas-theme", theme); } catch {}
+        updateThemeButton();
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const swap = document.getElementById("swap-airports");
+        if (!swap) return;
+        const airports = ["source", "destination"].map(side => document.getElementById("id_" + side + "_airport"));
+        const pickerStyles = document.getElementById("airport-picker-styles");
+        const canEnhancePicker = typeof window.TomSelect === "function" && pickerStyles.sheet;
+        airports.forEach(select => {
+            const widget = canEnhancePicker ? new TomSelect(select, {maxOptions: 80}) : null;
+            if (widget && select.hasAttribute("aria-invalid")) {
+                widget.control_input.setAttribute("aria-invalid", "true");
+                widget.control_input.setAttribute("aria-describedby", select.id + "_error");
+            }
+        });
+        swap.hidden = false;
+        swap.addEventListener("click", () => {
+            const values = airports.map(select => select.value).reverse();
+            airports.forEach((select, index) => {
+                if (select.tomselect) select.tomselect.setValue(values[index]);
+                else select.value = values[index];
+            });
+        });
+    });
+</script>

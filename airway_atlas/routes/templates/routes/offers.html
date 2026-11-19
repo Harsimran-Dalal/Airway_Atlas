@@ -1,0 +1,114 @@
+{% load l10n %}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Flight offers | Airway Atlas</title>
+    {% include "routes/styles.html" %}
+</head>
+<body>
+    <header class="topbar">
+        <div class="shell topbar-inner">
+            <a class="brand" href="{% url 'home' %}"><span class="brand-mark" aria-hidden="true">✈</span> Airway Atlas</a>
+            <nav aria-label="Main navigation">
+                <a href="{% url 'home' %}">Explorer</a>
+                <a href="{% url 'offline' %}">Algorithm Lab</a>
+                <a href="{% url 'flight-offers' %}" aria-current="page">Flight offers</a>
+                <button class="theme" id="theme-toggle" type="button" hidden>Dark mode</button>
+            </nav>
+        </div>
+    </header>
+    <main class="shell">
+        <section class="intro" aria-labelledby="page-title">
+            <h1 id="page-title">Flight offers</h1>
+            <p>Compare one-way economy fares for one adult on your departure date.</p>
+        </section>
+        <section class="search-panel" aria-label="Flight offer search">
+            <form method="post" action="{% url 'flight-offers' %}">
+                {% csrf_token %}
+                <div class="offer-fields">
+                    {% for field in form %}
+                        <div class="field{% if field.name == 'preferences' %} offer-preferences{% endif %}">
+                            {{ field.label_tag }}
+                            {{ field }}
+                            {% if field.help_text %}<p class="offer-help" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</p>{% endif %}
+                            {% for error in field.errors %}<p class="field-error" id="{{ field.auto_id }}_error" role="alert">{{ error }}</p>{% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+                <div class="offer-actions">
+                    <button class="submit" type="submit">Find flight offers</button>
+                    {% if provider_configured %}<button class="theme" type="submit" name="demo" value="1">Use demo offers</button>{% endif %}
+                </div>
+            </form>
+        </section>
+        {% if searched %}
+            <section class="results" aria-labelledby="results-title">
+                <div class="results-heading">
+                    <div>
+                        <h2 id="results-title">{{ source }} → {{ destination }}</h2>
+                        <p>{{ date|date:"M j, Y" }} · {{ offer_source }}</p>
+                    </div>
+                </div>
+                {% for notice in notices %}<p role="status" class="offer-notice">{{ notice }}</p>{% endfor %}
+                {% if flight_offers %}
+                    <div class="offer-table-wrap">
+                        <table class="offer-table" id="offer-table">
+                            <caption class="sr-only">Flight offers</caption>
+                            <thead><tr>
+                                <th scope="col">Airline</th>
+                                <th scope="col" aria-sort="ascending">Price <button type="button" data-sort="price" aria-label="Sort by price" hidden>↕</button></th>
+                                <th scope="col">Duration <button type="button" data-sort="minutes" aria-label="Sort by duration" hidden>↕</button></th>
+                                <th scope="col">Stops <button type="button" data-sort="stops" aria-label="Sort by stops" hidden>↕</button></th>
+                            </tr></thead>
+                            <tbody>
+                                {% for offer in flight_offers %}
+                                <tr data-currency="{{ offer.currency }}" data-price="{{ offer.amount|unlocalize }}" data-minutes="{{ offer.minutes|default_if_none:'' }}" data-stops="{{ offer.stops }}">
+                                    <th scope="row">{{ offer.airline }}</th>
+                                    <td>{{ offer.currency }} {{ offer.amount }}</td>
+                                    <td>{% if offer.minutes is not None %}{{ offer.minutes }} min{% else %}—{% endif %}</td>
+                                    <td>{% if offer.stops %}{{ offer.stops }}{% else %}Nonstop{% endif %}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="method-note">Prices are sorted within each currency.</p>
+                {% else %}
+                    <p>No offers matched this search. Try another date, route, or preference.</p>
+                {% endif %}
+            </section>
+        {% endif %}
+    </main>
+    <footer class="footer"><div class="shell footer-inner"><span>Airway Atlas</span><a href="https://github.com/Harsimran-Dalal">Harsimran Singh Dalal on GitHub ↗</a></div></footer>
+    {% include "routes/scripts.html" %}
+    <script>
+        const offerTable = document.getElementById("offer-table");
+        if (offerTable) {
+            const buttons = offerTable.querySelectorAll("[data-sort]");
+            const rows = offerTable.tBodies[0];
+            buttons.forEach(button => {
+                button.hidden = false;
+                button.addEventListener("click", () => {
+                    const key = button.dataset.sort;
+                    const header = button.closest("th");
+                    const descending = header.getAttribute("aria-sort") === "ascending";
+                    buttons.forEach(item => item.closest("th").removeAttribute("aria-sort"));
+                    header.setAttribute("aria-sort", descending ? "descending" : "ascending");
+                    const sorted = Array.from(rows.rows).sort((a, b) => {
+                        if (key === "price" && a.dataset.currency !== b.dataset.currency) {
+                            return a.dataset.currency.localeCompare(b.dataset.currency);
+                        }
+                        if (!a.dataset[key] || !b.dataset[key]) {
+                            return Number(!a.dataset[key]) - Number(!b.dataset[key]);
+                        }
+                        return (Number(a.dataset[key]) - Number(b.dataset[key])) * (descending ? -1 : 1);
+                    });
+                    rows.append(...sorted);
+                });
+            });
+        }
+    </script>
+</body>
+</html>
