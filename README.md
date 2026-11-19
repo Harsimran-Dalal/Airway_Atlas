@@ -48,4 +48,3 @@ The app reads the bundled [Airline Routes & Airports dataset](https://www.kaggle
 ## Credits
 
 - **Harsimran Singh Dalal** · [GitHub](https://github.com/Harsimran-Dalal)
-- Upstream project · [Shivamkhator/SkyBee_Routes](https://github.com/Shivamkhator/SkyBee_Routes)
